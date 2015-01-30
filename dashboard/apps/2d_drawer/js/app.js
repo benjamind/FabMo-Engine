@@ -988,7 +988,7 @@ Tasks.alignLeft = function(id,reference){
 		});
 
 		$.each(this, function(i,t){
-			if (t.current){
+			if (t.current && !t.lastSelected){
 				t.translate(new p(lastSelection.position.topLeft.x - t.position.topLeft.x,0));
 				transformed = true;
 			}
@@ -1017,7 +1017,7 @@ Tasks.alignRight = function(id,reference){
 		});
 
 		$.each(this, function(i,t){
-			if (t.current){
+			if (t.current && !t.lastSelected){
 				t.translate(new p(lastSelection.position.topRight.x - t.position.topRight.x,0));
 				transformed = true;
 			}
@@ -1045,7 +1045,7 @@ Tasks.alignTop = function(id,reference){
 		});
 
 		$.each(this, function(i,t){
-			if (t.current){
+			if (t.current && !t.lastSelected){
 				t.translate(new p(0,lastSelection.position.topLeft.y - t.position.topLeft.y));
 				transformed = true;
 			}
@@ -1076,6 +1076,208 @@ Tasks.alignBottom = function(id,reference){
 			if (t.current && !t.lastSelected){
 				console.log(lastSelection.position.bottomRight.y - t.position.bottomRight.y);
 				t.translate(new p(0,lastSelection.position.bottomRight.y - t.position.bottomRight.y));
+				transformed = true;
+			}
+		});
+		!transformed ? console.log("No shape selected, no transformation") : null;
+	}
+};
+
+//Align the left of the task "Id" to the right of the Task "reference"
+//Also align each selected task to the last selected one
+Tasks.alignLeftRight = function(id,reference){
+	//Move tasks if passed in parameter
+	if (id) {
+		Tasks[Tasks.pos(id)].translate(new p(reference.position.topRight.x - Tasks[Tasks.pos(id)].position.topLeft.x,0));
+	}
+	//Or reset the "current" status of each task (no "id parameter")
+	else {
+		var lastSelection = null;
+		var transformed = false;
+
+		$.each(this, function(i,t){
+			if (t.lastSelected==true){
+				lastSelection = t;
+				console.log(lastSelection);
+			}
+		});
+
+		$.each(this, function(i,t){
+			if (t.current && !t.lastSelected){
+				t.translate(new p(lastSelection.position.topRight.x - t.position.topLeft.x,0));
+				transformed = true;
+			}
+		});
+		!transformed ? console.log("No shape selected, no transformation") : null;
+	}
+};
+
+//Align the right of the task "Id" to the left of the Task "reference"
+//Also align each selected task to the last selected one
+Tasks.alignRightLeft = function(id,reference){
+	//Move tasks if passed in parameter
+	if (id) {
+		Tasks[Tasks.pos(id)].translate(new p(reference.position.topLeft.x - Tasks[Tasks.pos(id)].position.topRight.x,0));
+	}
+	//Or reset the "current" status of each task (no "id parameter")
+	else {
+		var lastSelection = null;
+		var transformed = false;
+
+		$.each(this, function(i,t){
+			if (t.lastSelected==true){
+				lastSelection = t;
+				console.log(lastSelection);
+			}
+		});
+
+		$.each(this, function(i,t){
+			if (t.current && !t.lastSelected){
+				t.translate(new p(lastSelection.position.topLeft.x - t.position.topRight.x,0));
+				transformed = true;
+			}
+		});
+		!transformed ? console.log("No shape selected, no transformation") : null;
+	}
+};
+
+//Align the top of the task "Id" to the bottom of the Task "reference"
+//Also align each selected task to the last selected one
+Tasks.alignTopBottom = function(id,reference){
+	//Move tasks if passed in parameter
+	if (id) {
+		Tasks[Tasks.pos(id)].translate(new p(0,reference.position.bottomLeft.y - Tasks[Tasks.pos(id)].position.topLeft.y));
+	}
+	//Or reset the "current" status of each task (no "id parameter")
+	else {
+		var lastSelection = null;
+		var transformed = false;
+
+		$.each(this, function(i,t){
+			if (t.lastSelected==true){
+				lastSelection = t;
+			}
+		});
+
+		$.each(this, function(i,t){
+			if (t.current && !t.lastSelected){
+				t.translate(new p(0,lastSelection.position.bottomLeft.y - t.position.topLeft.y));
+				transformed = true;
+			}
+		});
+		!transformed ? console.log("No shape selected, no transformation") : null;
+	}
+};
+
+//Align the Bottom of the task "Id" to the top of the Task "reference"
+//Also align each selected task to the last selected one
+Tasks.alignBottomTop = function(id,reference){
+	//Move tasks if passed in parameter
+	if (id) {
+		Tasks[Tasks.pos(id)].translate(new p(0,reference.position.topRight.y - Tasks[Tasks.pos(id)].position.bottomRight.y));
+	}
+	//Or reset the "current" status of each task (no "id parameter")
+	else {
+		var lastSelection = null;
+		var transformed = false;
+
+		$.each(this, function(i,t){
+			if (t.lastSelected==true){
+				lastSelection = t;
+			}
+		});
+
+		$.each(this, function(i,t){
+			if (t.current && !t.lastSelected){
+				t.translate(new p(0,lastSelection.position.topRight.y - t.position.bottomRight.y));
+				transformed = true;
+			}
+		});
+		!transformed ? console.log("No shape selected, no transformation") : null;
+	}
+};
+
+//Align horizontally the task "Id" relatively to the Task "reference"
+//Also align each selected task to the last selected one
+Tasks.alignHorizontally = function(id,reference){
+	//Move tasks if passed in parameter
+	if (id) {
+		Tasks[Tasks.pos(id)].translate(new p(reference.position.center.x - Tasks[Tasks.pos(id)].position.center.x,0));
+	}
+	//Or reset the "current" status of each task (no "id parameter")
+	else {
+		var lastSelection = null;
+		var transformed = false;
+
+		$.each(this, function(i,t){
+			if (t.lastSelected==true){
+				lastSelection = t;
+				console.log(lastSelection);
+			}
+		});
+
+		$.each(this, function(i,t){
+			if (t.current && !t.lastSelected){
+				t.translate(new p(lastSelection.position.center.x - t.position.center.x,0));
+				transformed = true;
+			}
+		});
+		!transformed ? console.log("No shape selected, no transformation") : null;
+	}
+};
+
+
+//Align the vertically the task "Id" relatively to the Task "reference"
+//Also align each selected task to the last selected one
+Tasks.alignVertically = function(id,reference){
+	//Move tasks if passed in parameter
+	if (id) {
+		Tasks[Tasks.pos(id)].translate(new p(0,reference.position.center.y - Tasks[Tasks.pos(id)].position.center.y));
+	}
+	//Or reset the "current" status of each task (no "id parameter")
+	else {
+		var lastSelection = null;
+		var transformed = false;
+
+		$.each(this, function(i,t){
+			if (t.lastSelected==true){
+				lastSelection = t;
+			}
+		});
+
+		$.each(this, function(i,t){
+			if (t.current && !t.lastSelected){
+				t.translate(new p(0,lastSelection.position.center.y - t.position.center.y));
+				transformed = true;
+			}
+		});
+		!transformed ? console.log("No shape selected, no transformation") : null;
+	}
+};
+
+//Align the vertically the task "Id" relatively to the Task "reference"
+//Also align each selected task to the last selected one
+Tasks.alignCenter = function(id,reference){
+	//Move tasks if passed in parameter
+	if (id) {
+		Tasks[Tasks.pos(id)].translate(new p(0,reference.position.center.y - Tasks[Tasks.pos(id)].position.center.y));
+		Tasks[Tasks.pos(id)].translate(new p(reference.position.center.x - Tasks[Tasks.pos(id)].position.center.x,0));
+	}
+	//Or reset the "current" status of each task (no "id parameter")
+	else {
+		var lastSelection = null;
+		var transformed = false;
+
+		$.each(this, function(i,t){
+			if (t.lastSelected==true){
+				lastSelection = t;
+			}
+		});
+
+		$.each(this, function(i,t){
+			if (t.current && !t.lastSelected){
+				t.translate(new p(0,lastSelection.position.center.y - t.position.center.y));
+				t.translate(new p(lastSelection.position.center.x - t.position.center.x,0));
 				transformed = true;
 			}
 		});
@@ -1824,14 +2026,14 @@ rectangle.prototype.toolpath = function() {
 	}
 	else if (this.side == 1){ //Case toolpath outside the rectangle
 		var e={};
-		var alpha0 = calculAlpha(this.p0,this.p2);
-		var alpha1 = calculAlpha(this.p2,this.p1);
-		var alpha2 = calculAlpha(this.p1,this.p3);
-		var alpha3 = calculAlpha(this.p3,this.p0);
+		var alpha0 = calculAlpha(this.p0,this.p2)+pi/2;
+		var alpha1 = calculAlpha(this.p1,this.p3)+pi/2;
+		var alpha2 = calculAlpha(this.p2,this.p1)+pi/2;
+		var alpha3 = calculAlpha(this.p3,this.p0)+pi/2;
 
-		e.p0 = new p(this.p0.x - (s.bit_d/2) * Math.sin(alpha0) , this.p0.y - (s.bit_d/2) * Math.sin(alpha0));
-		e.p1 = new p(this.p1.x - (s.bit_d/2) * Math.cos(alpha1) , this.p1.y + (s.bit_d/2) * Math.cos(alpha1));
-		e.p2 = new p(this.p2.x - (s.bit_d/2) * Math.sin(alpha2) , this.p2.y - (s.bit_d/2) * Math.sin(alpha2));
+		e.p0 = new p(this.p0.x + (s.bit_d/2) * Math.cos(alpha0) , this.p0.y - (s.bit_d/2) * Math.sin(alpha0));
+		e.p1 = new p(this.p1.x - (s.bit_d/2) * Math.sin(alpha1) , this.p1.y - (s.bit_d/2) * Math.sin(alpha1));
+		e.p2 = new p(this.p2.x - (s.bit_d/2) * Math.cos(alpha2) , this.p2.y + (s.bit_d/2) * Math.cos(alpha2));
 		e.p3 = new p(this.p3.x - (s.bit_d/2) * Math.cos(alpha3) , this.p3.y + (s.bit_d/2) * Math.cos(alpha3));
 
 		this.t.push(e);	//Add rectangle to thel ist of toolpaths

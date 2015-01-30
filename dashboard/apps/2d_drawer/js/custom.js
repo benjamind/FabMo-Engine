@@ -167,6 +167,28 @@ $(document).ready(function(){
 	$("#move-bottom-bottom").click(function(){
 		Tasks.alignBottom();
 	});
+	//Align actions
+	$("#move-left-right").click(function(){
+		Tasks.alignLeftRight();
+	});
+	$("#move-right-left").click(function(){
+		Tasks.alignRightLeft();
+	});
+	$("#move-top-bottom").click(function(){
+		Tasks.alignTopBottom();
+	});
+	$("#move-bottom-top").click(function(){
+		Tasks.alignBottomTop();
+	});
+	$("#move-vertically").click(function(){
+		Tasks.alignVertically();
+	});
+	$("#move-horizontally").click(function(){
+		Tasks.alignHorizontally();
+	});
+	$("#move-center").click(function(){
+		Tasks.alignCenter();
+	});
 
 	//Line Form : Coordinates invert
 	$(".invert-pos").click(function(){
