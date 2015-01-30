@@ -14,6 +14,7 @@ var SBPRuntime = require('./runtime/opensbp').SBPRuntime;
 var ManualRuntime = require('./runtime/manual').ManualRuntime;
 var PassthroughRuntime = require('./runtime/passthrough').PassthroughRuntime;
 
+
 function connect(callback) {
 
 	switch(PLATFORM) {
@@ -224,7 +225,6 @@ Machine.prototype.setState = function(source, newstate) {
 	}
 };
 
-
 Machine.prototype.stopJog = function() {
 	this.current_runtime.stopJog();
 };
@@ -254,13 +254,11 @@ Machine.prototype.enable_passthrough = function(callback) {
 	else{
 		typeof callback === "function" && callback(true, "Cannot jog when in '" + this.status.state + "' state.");
 	}
-
 };
 
 Machine.prototype.disable_passthrough = function(string) {
 	log.info("disable passthrough");
 	this.setRuntime(this.gcode_runtime);
 };
-
 
 exports.connect = connect;
