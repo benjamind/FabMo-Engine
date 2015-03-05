@@ -86,7 +86,7 @@ SBPRuntime.prototype._update = function() {
 	if(this.machine) {
 		status = this.machine.status || {};		
 	} else {
-		status = {}
+		status = {};
 	}
 	this.posx = status.posx || 0.0;
 	this.posy = status.posy || 0.0;
@@ -663,8 +663,8 @@ SBPRuntime.prototype.loadCommands = function(callback) {
 	for(var attr in commands) {
 		proto[attr] = commands[attr];
 	}
-	callback(null, this)
-}
+	callback(null, this);
+};
 
 exports.SBPRuntime = SBPRuntime;
 

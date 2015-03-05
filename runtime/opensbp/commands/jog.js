@@ -2,7 +2,7 @@ var log = require('../../../log').logger('sbp');
 var g2 = require('../../../g2');
 var sb3_commands = require('../sb3_commands');
 var config = require('../../../config');
-
+var rotate = require('./transformation').rotate;
 
 // Jog (rapid) the X axis
 exports.JX = function(args) {
@@ -74,23 +74,36 @@ exports.J2 = function(args) {
 // Jog (rapid) 3 axes (XYZ). This is a modal command, any axis location that is left out
 //   of the command will default to it's current position and not move
 exports.J3 = function(args) {
+	var Angle = -0.004; //( -0.286/180 ) * 3.1415926536;
+	var RPtX = 0;
+	var RPtY = 0;
+	var M3res = 5;
+	var x = args[0];
+	var y = args[1];
+	var z = args[2];
+	var PtXform = {};
+
+	if ( Angle !== 0 ){
+		PtXform = rotate(x, y, Angle, RPtX, RPtY);
+		x = PtXform.X;
+		y = PtXform.Y;
+	}
+
 	var outStr = "G0";
+
 	if (args[0] !== undefined) {
-		var x = args[0];
 		if(isNaN(x)) { throw "Invalid JX argument: " + x; }
-		outStr = outStr + "X" + x;
+		outStr = outStr + "X" + (x).toFixed(M3res);
 		this.cmd_posx = x;
 	}
 	if (args[1] !== undefined) {
-		var y = args[1];
 		if(isNaN(y)) { throw "Invalid JY argument: " + y; }
-		outStr = outStr + "Y" + y;
+		outStr = outStr + "Y" + (y).toFixed(M3res);
 		this.cmd_posy = y;
 	}
 	if (args[2] !== undefined) {
-		var z = args[2];
 		if(isNaN(z)) { throw "Invalid JZ argument: " + z; }
-		outStr = outStr + "Z" + z;
+		outStr = outStr + "Z" + (z).toFixed(M3res);
 		this.cmd_posz = z;
 	}
 	this.emit_gcode(outStr);

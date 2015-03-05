@@ -3,6 +3,8 @@ var g2 = require('../../../g2');
 var sb3_commands = require('../sb3_commands');
 var config = require('../../../config');
 var rotate = require('./transformation').rotate;
+var leveler_HB = require('./leveler').leveler_HB;
+var readPtData = require('./leveler').readPtData;
 
 // Move X axis
 exports.MX = function(args) {
@@ -76,36 +78,47 @@ exports.M2 = function(args) {
 // Move 3 axes (XYZ). This is a modal command, any axis location that is left out
 //   of the command will default to it's current position and not move
 exports.M3 = function(args) {
-	var Angle = 0;
+	var Angle = -0.004; //( -0.286/180 ) * 3.1415926536;
 	var RPtX = 0;
 	var RPtY = 0;
 	var M3res = 5;
-	var PtRot = rotate(args[0], args[1], args[2], Angle, RPtX, RPtY);
+	var x = args[0];
+	var y = args[1];
+	var z = args[2];
+	var PtXform = {};
+
+	if ( Angle !== 0 ){
+		PtXform = rotate(x, y, Angle, RPtX, RPtY);
+		x = PtXform.X;
+		y = PtXform.Y;
+	}	
 
 	var outStr = "G1";
+
 	if (args[0] !== undefined) {
-//		var x = args[0];
-		var x = PtRot.X;
 		if(isNaN(x)) { throw "Invalid M3-X argument: " + x; }		
 		outStr = outStr + "X" + (x).toFixed(M3res);
+//		log.debug("Made it past X: " + outStr);
 		this.cmd_posx = x;
 	}
 	if (args[1] !== undefined) {
-//		var y = args[1];
-		var y = PtRot.Y;
 		if(isNaN(y)) { throw "Invalid M3-Y argument: " + y; }
 		outStr = outStr + "Y" + (y).toFixed(M3res);
+//		log.debug("Made it past Y: " + outStr);
 		this.cmd_posy = y;
 	}
 	if (args[2] !== undefined) {
-//		var z = args[2];
-		var z = PtRot.Z;
 		if(isNaN(z)) { throw "Invalid M3-Z argument: " + z; }
+//		log.debug("Working on Z: " + z);
+//		log.debug("Leveled Z: " + z);		
 		outStr = outStr + "Z" + (z).toFixed(M3res);
+//		log.debug("Made it past Z: " + outStr);
 		this.cmd_posz = z;
 	}
 	outStr = outStr + "F" + ( 60.0 * config.opensbp.get('movexy_speed')); 
+//	log.debug("M3: " + outStr);
 	this.emit_gcode(outStr);
+//	}.bind(this));
 };
 
 // Move 4 axes (XYZA). This is a modal command, any axis location that is left out

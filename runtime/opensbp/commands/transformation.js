@@ -3,16 +3,19 @@ var g2 = require('../../../g2');
 var sb3_commands = require('../sb3_commands');
 var config = require('../../../config');
 
-// Point X, Point Y, Point Z, Angle(in radians), Rotation Point X, Rotation Point Y
-exports.rotate = function(PtX, PtY, PtZ, Angle, RPtX, RPtY){
+// Point X, Point Y, Angle(in radians), Rotation Point X, Rotation Point Y
+exports.rotate = function(PtX, PtY, Angle, RPtX, RPtY){
+	if ( PtX === undefined || PtY === undefined ){
+		log.debug("Undefined X or Y in call to rotate");
+		return 0;
+	}
 	var cosB = Math.cos(Angle);
 	var sinB = Math.sin(Angle);
 	if (RPtX === undefined) {RPtX = 0;}
 	if (RPtY === undefined) {RPtY = 0;}
-	var PtNew = {};
+	var PtNew = { };
 	PtNew.X = (PtX*cosB)-(PtY*sinB)+(RPtX*(1-cosB))+(RPtY*sinB);
 	PtNew.Y = (PtX*sinB)+(PtY*cosB)+(RPtY*(1-cosB))-(RPtX*sinB);
-    PtNew.Z = PtZ;
 
 	return PtNew;
 };
