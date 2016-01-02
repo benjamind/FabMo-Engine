@@ -1,4 +1,5 @@
 var g2 = require('./g2');
+var tinyg = require('./tinyg');
 var util = require('util');
 var events = require('events');
 var PLATFORM = require('process').platform;
@@ -41,13 +42,13 @@ function connect(callback) {
 			break;
 	}
 	if(control_path && gcode_path) {
-		exports.machine = new Machine(control_path, gcode_path, callback);
+		exports.machine = new Machine(control_path, gcode_path, config.engine.get('driver'), callback);
 	} else {
 		typeof callback === "function" && callback('No supported serial path for platform "' + PLATFORM + '"');
 	}
 }
 
-function Machine(control_path, gcode_path, callback) {
+function Machine(control_path, gcode_path, driverName, callback) {
 
 	// Handle Inheritance
 	events.EventEmitter.call(this);
@@ -57,7 +58,7 @@ function Machine(control_path, gcode_path, callback) {
 		state : "not_ready",
 		posx : 0.0,
 		posy : 0.0,
-		posz : 0.0, 
+		posz : 0.0,
 		in1 : 1,
 		in2 : 1,
 		in3 : 1,
@@ -73,7 +74,15 @@ function Machine(control_path, gcode_path, callback) {
 		nb_lines : null
 	};
 
-	this.driver = new g2.G2();
+	if (driverName === "g2") {
+		this.driver = new g2.G2();
+	} else if (driverName === "tinyg") {
+		this.driver = new tinyg.TinyG();
+	} else {
+		log.error("Unknown driver name '" + driverName + "'");
+		throw new Error("Unknown driver specified in engine configuration : " + driverName);
+	}
+	
 	this.driver.on("error", function(data) {log.error(data);});
 	this.driver.connect(control_path, gcode_path, function(err, data) {
 	    // Set the initial state based on whether or not we got a valid connection to G2

@@ -8,7 +8,7 @@ var Watchdog = require('./util').Watchdog;
 var log = require('./log').logger('driver');
 var process = require('process');
 
-// Values of the **stat** field that is returned from G2 status reports
+// Values of the **stat** field that is returned from TinyG status reports
 var STAT_INIT = 0;
 var STAT_READY = 1;
 var STAT_ALARM = 2;
@@ -21,7 +21,7 @@ var STAT_CYCLING = 8;
 var STAT_HOMING = 9;
 
 // Should take no longer than CMD_TIMEOUT to do a get or a set operation
-var CMD_TIMEOUT = 10000;
+var CMD_TIMEOUT = 30000;
 var EXPECT_TIMEOUT = 5000;
 
 // When jogging, "keepalive" jog commands must arrive faster than this interval (ms)
@@ -46,20 +46,20 @@ var JOG_AXES = {'x':'X',
 				'c':'C',
 				'-c':'C-'};
 
-// Error codes defined by G2
-// See https://github.com/synthetos/g2/blob/edge/TinyG2/tinyg2.h for the latest error codes and messages
+// Error codes defined by TinyG
+// See https://github.com/synthetos/TinyG/blob/edge/firmware/tinyg/tinyg.h for the latest error codes and messages
 try {
-	var G2_ERRORS = JSON.parse(fs.readFileSync('./data/g2_errors.json','utf8'));
+	var TINYG_ERRORS = JSON.parse(fs.readFileSync('./data/tinyg_errors.json','utf8'));
 } catch(e) {
-	var G2_ERRORS = {};
+	var TINYG_ERRORS = {};
 }
 
-// G2 Constructor
-function G2() {
-	this.name = "g2";
+// TinyG Constructor
+function TinyG() {
+	this.name = "tinyg";
 	this.current_data = [];
 	this.current_gcode_data = [];
-	this.g2_status = {'stat':null, 'posx':0, 'posy':0, 'posz':0};
+	this.tinyg_status = {'stat':null, 'posx':0, 'posy':0, 'posz':0};
 	this.status = {'stat':'idle', 'posx':0, 'posy':0, 'posz':0};
 
 	this.gcode_queue = new Queue();
@@ -92,10 +92,10 @@ function G2() {
 	events.EventEmitter.call(this);	
 	this.setMaxListeners(50);
 }
-util.inherits(G2, events.EventEmitter);
+util.inherits(TinyG, events.EventEmitter);
 
-// Actually open the serial port and configure G2 based on stored settings
-G2.prototype.connect = function(control_path, gcode_path, callback) {
+// Actually open the serial port and configure TinyG based on stored settings
+TinyG.prototype.connect = function(control_path, gcode_path, callback) {
 
 	// Store paths for safe keeping
 	this.control_path = control_path;
@@ -106,7 +106,7 @@ G2.prototype.connect = function(control_path, gcode_path, callback) {
 
 	// Open both ports
 	log.info('Opening control port ' + control_path);
-	this.control_port = new serialport.SerialPort(control_path, {rtscts:true}, false);
+	this.control_port = new serialport.SerialPort(control_path, {rtscts:true, baudrate:115200}, false);
 	if(control_path !== gcode_path) {
 		log.info("Dual USB since control port and gcode port are different. (" + this.control_path + "," + this.gcode_path + ")");
 		this.gcode_port = new serialport.SerialPort(gcode_path, {rtscts:true}, false);
@@ -130,12 +130,18 @@ G2.prototype.connect = function(control_path, gcode_path, callback) {
 	}
 
 	var onOpen = function(callback) {
-		this.controlWrite("\x04")
-		this.gcodeWrite("{clr:n}\n");
+		this.controlWrite("\x18");
+		//this.controlWrite("\x04");
+		this.gcodeWrite("{clear:true}\n");
+		//this.command("{sv:2}");
 		this.command("M30");
 		this.requestStatusReport();
-		this.connected = true;
-		callback(null, this);
+		setTimeout(function() {
+			this.setPacketMode(function () {
+				this.connected = true;
+				callback(null, this);
+			}.bind(this));
+		}.bind(this), 8000);
 	}.bind(this);
 
 	this.control_port.open(function(error) {
@@ -158,7 +164,7 @@ G2.prototype.connect = function(control_path, gcode_path, callback) {
 	}.bind(this));
 };
 
-G2.prototype.disconnect = function(callback) {
+TinyG.prototype.disconnect = function(callback) {
 	this.watchdog.stop();
 	if(this.control_port !== this.gcode_port) {
 		this.control_port.close(function(callback) {
@@ -171,28 +177,31 @@ G2.prototype.disconnect = function(callback) {
 };
 
 // Log serial errors.  Most of these are exit-able offenses, though.
-G2.prototype.onSerialError = function(data) {
+TinyG.prototype.onSerialError = function(data) {
+	log.error('serial error : ' + data);
 	//if(this.connect_callback) {
 	//	this.connect_callback(data);
 	//}
 };
 
-G2.prototype.onSerialClose = function(data) {
+TinyG.prototype.onSerialClose = function(data) {
 	this.connected= false;
-	log.error('G2 Core serial link was lost.')
+	log.error('TinyG Core serial link was lost.')
 	process.exit(14);
 };
 
 // Write data to the control port.  Log to the system logger.
-G2.prototype.controlWrite = function(s) {
-	this.watchdog.start();
+TinyG.prototype.controlWrite = function(s) {
+	if (s.length !== 1) {
+		this.watchdog.start();
+	}
 	t = new Date().getTime();
 	log.driver('--C-' + t + '----> ' + s.trim());
 	this.control_port.write(s);
 };
 
 // Write data to the gcode port.  Log to the system logger.
-G2.prototype.gcodeWrite = function(s) {
+TinyG.prototype.gcodeWrite = function(s) {
 	this.watchdog.start();
 	t = new Date().getTime();
 	log.driver('--G-' + t + '----> ' + s.trim());
@@ -200,7 +209,7 @@ G2.prototype.gcodeWrite = function(s) {
 };
 
 // Write data to the serial port.  Log to the system logger.  Execute **callback** when transfer is complete.
-G2.prototype.controlWriteAndDrain = function(s, callback) {
+TinyG.prototype.controlWriteAndDrain = function(s, callback) {
 	this.watchdog.start();
 	t = new Date().getTime();
 	log.driver('--C-' + t + '----> ' + s);
@@ -209,7 +218,7 @@ G2.prototype.controlWriteAndDrain = function(s, callback) {
 	}.bind(this));
 };
 
-G2.prototype.gcodeWriteAndDrain = function(s, callback) {
+TinyG.prototype.gcodeWriteAndDrain = function(s, callback) {
 	this.watchdog.start();
 	t = new Date().getTime();
 	log.driver('--G-' + t + '----> ' + s);
@@ -218,13 +227,13 @@ G2.prototype.gcodeWriteAndDrain = function(s, callback) {
 	}.bind(this));
 };
 
-G2.prototype.clearAlarm = function() {
+TinyG.prototype.clearAlarm = function() {
 	this.watchdog.start();
 	this.command({"clear":null});
 };
 
 // Start or continue jogging in the direction provided, which is one of x,-x,y,-y,z-z,a,-a,b,-b,c,-c
-G2.prototype.jog = function(direction) {
+TinyG.prototype.jog = function(direction) {
 
 	var MOVES = 10;
 	var FEED_RATE = 60.0;			// in/min
@@ -277,7 +286,7 @@ G2.prototype.jog = function(direction) {
 };
 
 // Start or continue jogging in the direction provided, which is one of x,-x,y,-y,z-z,a,-a,b,-b,c,-c
-G2.prototype.fixed_move = function(direction,step,speed) {
+TinyG.prototype.fixed_move = function(direction,step,speed) {
 	if(this.quit_pending){ 
 		log.warn("WARNING QUIT PENDING WHILE DOING A FIXED MOVE")
 	}
@@ -304,13 +313,13 @@ G2.prototype.fixed_move = function(direction,step,speed) {
 	} 
 };
 
-G2.prototype.jog_keepalive = function() {
+TinyG.prototype.jog_keepalive = function() {
 	log.info('Keeping jog alive.');
 	clearTimeout(this.jog_heartbeat);
 	this.jog_heartbeat = setTimeout(this.stopJog.bind(this), JOG_TIMEOUT);
 };
 
-G2.prototype.stopJog = function() {
+TinyG.prototype.stopJog = function() {
 	if(this.jog_direction && !this.jog_stop_pending) {
 		log.debug('stopJog()');
 		this.jog_stop_pending = true;
@@ -321,7 +330,7 @@ G2.prototype.stopJog = function() {
 	}
 };
 
-G2.prototype.setUnits = function(units, callback) {
+TinyG.prototype.setUnits = function(units, callback) {
 	if(units === 0 || units == 'in') {
 		gc = 'G20';
 		units = 0;
@@ -340,15 +349,15 @@ G2.prototype.setUnits = function(units, callback) {
 	}.bind(this));
 }
 
-G2.prototype.requestStatusReport = function(callback) {
+TinyG.prototype.requestStatusReport = function(callback) {
 	// Register the callback to be called when the next status report comes in
 	typeof callback === 'function' && this.once('status', callback);
 	this.command({'sr':null}); 
 };
 
-G2.prototype.requestQueueReport = function() { this.command({'qr':null}); };
+TinyG.prototype.requestQueueReport = function() { this.command({'qr':null}); };
 
-G2.prototype.onWAT = function(data) {
+TinyG.prototype.onWAT = function(data) {
 	var s = data.toString('ascii');
 	var len = s.length;
 	for(var i=0; i<len; i++) {
@@ -364,8 +373,8 @@ G2.prototype.onWAT = function(data) {
 	}
 
 };
-// Called for every chunk of data returned from G2
-G2.prototype.onData = function(data) {
+// Called for every chunk of data returned from TinyG
+TinyG.prototype.onData = function(data) {
 	t = new Date().getTime();
 	//log.debug('<----' + t + '---- ' + data);
 	this.emit('raw_data',data);
@@ -399,7 +408,7 @@ G2.prototype.onData = function(data) {
 	}
 };
 
-G2.prototype.handleQueueReport = function(r) {
+TinyG.prototype.handleQueueReport = function(r) {
 	// Deal with jog mode
 	var qo = r.qo || 0;
 	if(this.jog_command && (qo > 0)) {
@@ -408,19 +417,35 @@ G2.prototype.handleQueueReport = function(r) {
 	}
 };
 
-G2.prototype.handleFooter = function(response) {
+TinyG.prototype.handleFooter = function(response) {
 	if(response.f) {
 		if(response.f[1] !== 0) {
 			var err_code = response.f[1];
-			var err_msg = G2_ERRORS[err_code] || ['ERR_UNKNOWN', 'Unknown Error'];
+			var err_msg = TINYG_ERRORS[err_code] || ['ERR_UNKNOWN', 'Unknown Error'];
 			// TODO we'll have to go back and clean up alarms later
 			// For now, let's not emit a bunch of errors into the log that don't mean anything to us
 			this.emit('error', [err_code, err_msg[0], err_msg[1]]);
 		}
+		// handle packet mode line numbers
+		if (response.f[0] === 3) {
+			if (response.r && response.r["rxm"] === 1) {
+				// rxm mode entered, record total number of slots
+				this.slotsTotal = response.f[2];
+				log.driver("Packet Mode established : " + this.slotsTotal + " slots");
+			}
+			this.slotsAvailable = response.f[2];
+
+			if(this.slotsAvailable > 2) {
+				if(this.gcode_queue.getLength() > 0) {
+					log.warn("There are " + this.slotsAvailable + " sending more...");
+					this.sendMoreGCodes();
+				}
+			}
+		}
 	}
 };
 
-G2.prototype.handleExceptionReport = function(response) {
+TinyG.prototype.handleExceptionReport = function(response) {
 	if(response.er) {
 		var stat = response.er.st;
 		if(((stat === 204) || (stat === 207)) && this.quit_pending) {
@@ -441,7 +466,7 @@ G2.prototype.handleExceptionReport = function(response) {
 8	machine is running (cycling)
 9	machine is homing
 */
-G2.prototype.handleStatusReport = function(response) {
+TinyG.prototype.handleStatusReport = function(response) {
 	if(response.sr) {
 
 		// Update our copy of the system status
@@ -456,20 +481,6 @@ G2.prototype.handleStatusReport = function(response) {
 
 		// Emit status no matter what
 		this.emit('status', this.status);
-
-		// Send more g-codes if warranted
-		if('line' in response.sr) {
-			line = response.sr.line;
-			lines_left = this.lines_sent - line;
-
-			if(lines_left < GCODE_MIN_LINE_THRESH) {
-				this.last_line_seen = line;
-				if(this.gcode_queue.getLength() > 0) {
-					log.warn("Lines left has fallen to " + lines_left + " sending more...");
-					this.sendMoreGCodes();
-				}
-			}
-		}
 
 		if('stat' in response.sr) {
 			if(response.sr.stat === STAT_STOP) {
@@ -499,8 +510,8 @@ G2.prototype.handleStatusReport = function(response) {
 	}
 };
 
-// Called once a proper JSON response is decoded from the chunks of data that come back from G2
-G2.prototype.onMessage = function(response) {
+// Called once a proper JSON response is decoded from the chunks of data that come back from TinyG
+TinyG.prototype.onMessage = function(response) {
 	this.watchdog.stop();
 	// TODO more elegant way of dealing with "response" data.
 	if(response.r) {
@@ -510,7 +521,7 @@ G2.prototype.onMessage = function(response) {
 		r = response;
 	}
 
-	// Deal with G2 status (top priority)
+	// Deal with TinyG status (top priority)
 	this.handleStatusReport(r);
 
 	// Deal with exceptions
@@ -541,7 +552,7 @@ G2.prototype.onMessage = function(response) {
 	}
 };
 
-G2.prototype.feedHold = function(callback) {
+TinyG.prototype.feedHold = function(callback) {
 	this.pause_flag = true;
 	this.flooded = false;
 	typeof callback === 'function' && this.once('state', callback);
@@ -551,26 +562,25 @@ G2.prototype.feedHold = function(callback) {
 	});
 };
 
-G2.prototype.queueFlush = function(callback) {
+TinyG.prototype.queueFlush = function(callback) {
 	log.debug('Clearing the queue.');
 	this.flushcallback = callback;
-	this.gcodeWrite('{clear:n}\n');
-	this.controlWrite('\%\n');
+	this.controlWrite('%\n');
 };
 
-G2.prototype.resume = function() {
+TinyG.prototype.resume = function() {
 	this.controlWrite('~\n'); //cycle start command character
 	this.pause_flag = false;
 };
 
 
-G2.prototype.quit = function() {
+TinyG.prototype.quit = function() {
 	this.quit_pending = true;
 	this.gcode_queue.clear();
 	this.controlWrite('\x04');
 }
 
-G2.prototype.get = function(key, callback) {
+TinyG.prototype.get = function(key, callback) {
 	var keys;
 	if(key instanceof Array) {
 		keys = key;
@@ -579,7 +589,7 @@ G2.prototype.get = function(key, callback) {
 		is_array = false;
 		keys = [key];
 	}
-	async.map(keys, 
+	async.mapSeries(keys, 
 
 		// Function called for each item in the keys array
 		function(k, cb) {
@@ -626,9 +636,9 @@ G2.prototype.get = function(key, callback) {
 	);
 };
 
-G2.prototype.setMany = function(obj, callback) {
+TinyG.prototype.setMany = function(obj, callback) {
 	var keys = Object.keys(obj);
-	async.map(keys, 
+	async.mapSeries(keys, 
 		// Function called for each item in the keys array
 		function(k, cb) {
 			cmd = {};
@@ -660,7 +670,7 @@ G2.prototype.setMany = function(obj, callback) {
 	);
 };
 
-G2.prototype.set = function(key, value, callback) {
+TinyG.prototype.set = function(key, value, callback) {
 	cmd = {};
 	cmd[key] = value;
 	if (key in this.readers) {
@@ -686,8 +696,8 @@ G2.prototype.set = function(key, value, callback) {
 	this.command(cmd);
 };
 
-// Send a command to G2 (can be string or JSON)
-G2.prototype.command = function(obj) {
+// Send a command to TinyG (can be string or JSON)
+TinyG.prototype.command = function(obj) {
 	var cmd;
 	if((typeof obj) == 'string') {
 		cmd = obj.trim();
@@ -701,11 +711,11 @@ G2.prototype.command = function(obj) {
 
 // Send a (possibly multi-line) string
 // An M30 will be placed at the end to put the machine back in the "idle" state
-G2.prototype.runString = function(data, callback) {
+TinyG.prototype.runString = function(data, callback) {
 	this.runSegment(data + "\nM30\n", callback);
 };
 
-G2.prototype.runImmediate = function(data, callback) {
+TinyG.prototype.runImmediate = function(data, callback) {
 	this.expectStateChange( {
 		'end':callback,
 		'stop':callback,
@@ -714,10 +724,17 @@ G2.prototype.runImmediate = function(data, callback) {
 		}
 	});
 	this.runString(data);
-}
+};
+
+TinyG.prototype.setPacketMode = function(callback) {
+	this.setMany({
+		'ej': 1,
+		'rxm': 1,
+	}, callback);
+};
 
 // Send a (possibly multi-line) string
-G2.prototype.runSegment = function(data, callback) {
+TinyG.prototype.runSegment = function(data, callback) {
 	line_count = 0;
 
 	// Divide string into a list of lines
@@ -745,15 +762,19 @@ G2.prototype.runSegment = function(data, callback) {
 	}
 };
 
-G2.prototype.sendMoreGCodes = function() {
-	codes = this.gcode_queue.multiDequeue(GCODE_BLOCK_SEND_SIZE);
-	if(codes.length > 0) {
-		this.lines_sent += codes.length;
-		this.gcodeWrite(codes.join('\n') + '\n');
+TinyG.prototype.sendMoreGCodes = function() {
+	// dequeue enough gcode lines to fill most of the slots
+	// we're leaving 2 on the table here so we have a buffer in case a control is about to fill it
+	// and we want one left for a future imminent control
+	if (this.slotsAvailable > 2) {
+		codes = this.gcode_queue.multiDequeue(this.slotsAvailable - 2);
+		if(codes.length > 0) {
+			this.gcodeWrite(codes.join('\n') + '\n');
+		}
 	}
 };
 
-G2.prototype.setMachinePosition = function(position, callback) {
+TinyG.prototype.setMachinePosition = function(position, callback) {
 	var gcode = "G21\nG28.3 ";
 	['x','y','z','a','b','c','u','v','w'].forEach(function(axis) {
 		if(position[axis] != undefined) {
@@ -781,7 +802,7 @@ G2.prototype.setMachinePosition = function(position, callback) {
 // In the above example, when the next change of state happens, the appropriate callback is called in the case
 // that the new state is either STAT_END or STAT_PAUSE.  If the new state is neither, other_callback is called.
 
-G2.prototype.expectStateChange = function(callbacks) {
+TinyG.prototype.expectStateChange = function(callbacks) {
 	if("timeout" in callbacks) {
 		var fn = callbacks.timeout;
 		setTimeout(function() {
@@ -798,13 +819,13 @@ G2.prototype.expectStateChange = function(callbacks) {
 	this.expectations.push(callbacks);
 };
 
-G2.prototype.getVersion = function(callback) {
-	log.info("Getting G2 firmware version...");
+TinyG.prototype.getVersion = function(callback) {
+	log.info("Getting TinyG firmware version...");
     this.get('fb', function(err, value) {
         if(err) {
-            log.error('Could not get the G2 firmware build. (' + err + ')');
+            log.error('Could not get the TinyG firmware build. (' + err + ')');
         } else {
-            log.info('G2 Firmware Build: ' + value);
+            log.info('TinyG Firmware Build: ' + value);
         }
         callback(null);
     });
@@ -828,7 +849,7 @@ state = function(s) {
 };
 
 // export the class
-exports.G2 = G2;
+exports.TinyG = TinyG;
 
 exports.STAT_INIT = STAT_INIT;
 exports.STAT_READY = STAT_READY;
@@ -841,13 +862,13 @@ exports.STAT_PROBE = STAT_PROBE;
 exports.STAT_CYCLING = STAT_CYCLING;
 exports.STAT_HOMING = STAT_HOMING;
 
-G2.prototype.STAT_INIT = STAT_INIT;
-G2.prototype.STAT_READY = STAT_READY;
-G2.prototype.STAT_ALARM = STAT_ALARM;
-G2.prototype.STAT_STOP = STAT_STOP;
-G2.prototype.STAT_END = STAT_END;
-G2.prototype.STAT_RUNNING = STAT_RUNNING;
-G2.prototype.STAT_HOLDING = STAT_HOLDING;
-G2.prototype.STAT_PROBE = STAT_PROBE;
-G2.prototype.STAT_CYCLING = STAT_CYCLING;
-G2.prototype.STAT_HOMING = STAT_HOMING;
+TinyG.prototype.STAT_INIT = STAT_INIT;
+TinyG.prototype.STAT_READY = STAT_READY;
+TinyG.prototype.STAT_ALARM = STAT_ALARM;
+TinyG.prototype.STAT_STOP = STAT_STOP;
+TinyG.prototype.STAT_END = STAT_END;
+TinyG.prototype.STAT_RUNNING = STAT_RUNNING;
+TinyG.prototype.STAT_HOLDING = STAT_HOLDING;
+TinyG.prototype.STAT_PROBE = STAT_PROBE;
+TinyG.prototype.STAT_CYCLING = STAT_CYCLING;
+TinyG.prototype.STAT_HOMING = STAT_HOMING;

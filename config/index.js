@@ -2,6 +2,7 @@ var Config = require('./config').Config;
 var async = require('async');
 var EngineConfig = require('./engine_config').EngineConfig;
 var G2Config = require('./g2_config').G2Config;
+var TinyGConfig = require('./tinyg_config').TinyGConfig;
 var OpenSBPConfig = require('./opensbp_config').OpenSBPConfig;
 var MachineConfig = require('./machine_config').MachineConfig;
 var DashboardCofnig = require('./dashboard_config').DashboardConfig;
@@ -30,7 +31,11 @@ function configureEngine(callback) {
 function configureDriver(driver, callback) {
     if(driver) {
     	log.debug("Configuring driver...");
-    	exports.driver = new G2Config(driver);
+    	if (driver.name === "g2") {
+    		exports.driver = new G2Config(driver);
+    	} else if (driver.name === "tinyg") {
+    		exports.driver = new TinyGConfig(driver);
+    	}
 		async.series([
 		function(callback) { exports.driver.init(callback); },
 		function(callback) { exports.driver.configureStatusReports(callback); }

@@ -206,15 +206,15 @@ Engine.prototype.start = function(callback) {
         // Configure G2 by loading all its json settings and static configuration parameters
         function load_driver_config(callback) {
             if(this.machine.isConnected()) {
-                log.info("Configuring G2...");
+                log.info("Configuring driver...");
                 config.configureDriver(machine.machine.driver, function(err, data) {
                     if(err) {
-                        log.error("There were problems loading the G2 configuration.");
+                        log.error("There were problems loading the driver configuration.");
                     }
                     callback(null);
                 });
             } else {
-                log.warn("Skipping G2 configuration due to no connection.");
+                log.warn("Skipping driver configuration due to no connection.");
                 config.configureDriver(null, function(err, data) {
                     callback(null);
                 })
@@ -222,19 +222,12 @@ Engine.prototype.start = function(callback) {
             }
         }.bind(this),
 
-        function get_g2_version(callback) {
+        function get_driver_version(callback) {
             if(this.machine.isConnected()) {
-                log.info("Getting G2 firmware version...");
-                this.machine.driver.get('fb', function(err, value) {
-                    if(err) {
-                        log.error('Could not get the G2 firmware build. (' + err + ')');
-                    } else {
-                        log.info('G2 Firmware Build: ' + value);
-                    }
-                    callback(null);
-                });
+                log.info("Getting driver version...");
+                this.machine.driver.getVersion(callback);
             } else {
-                log.warn("Skipping G2 firmware version check due to no connection.")
+                log.warn("Skipping driver version check due to no connection.")
                 callback(null);
             }
     	}.bind(this),
