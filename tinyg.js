@@ -776,7 +776,7 @@ TinyG.prototype.sendMoreGCodes = function() {
 
 TinyG.prototype.setMachinePosition = function(position, callback) {
 	var gcode = "G21\nG28.3 ";
-	['x','y','z','a','b','c','u','v','w'].forEach(function(axis) {
+	['x','y','z','a','b','c'].forEach(function(axis) {
 		if(position[axis] != undefined) {
 			gcode += ' ' + axis + position[axis].toFixed(3);
 		}		
