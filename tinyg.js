@@ -428,16 +428,14 @@ TinyG.prototype.handleFooter = function(response) {
 		if (response.f[0] === 3) {
 			if (response.r && response.r["rxm"] === 1) {
 				// rxm mode entered, record total number of slots
-				this.slotsTotal = response.f[2];
+				this.slotsTotal = response.f[2] - 4;
 				log.driver("Packet Mode established : " + this.slotsTotal + " slots");
 			}
-			this.slotsAvailable = response.f[2];
-
-			if(this.slotsAvailable > 2) {
-				if(this.gcode_queue.getLength() > 0) {
-					log.warn("There are " + this.slotsAvailable + " sending more...");
-					this.sendMoreGCodes();
-				}
+			this.slotsAvailable = response.f[2] - 2;
+			log.driver("Slots : " + this.slotsAvailable);
+			if (this.slotsAvailable > 1 && this.gcode_queue.getLength() > 0) {
+				log.driver("Sending line");
+				this.sendNextGCode();
 			}
 		}
 	}
@@ -748,7 +746,6 @@ TinyG.prototype.runSegment = function(data, callback) {
 		this.gcode_queue.enqueue(line);
 	}
 
-	this.lines_sent = 0;
 	this.sendMoreGCodes();
 
 	// Kick off the run if any lines were queued
@@ -760,12 +757,19 @@ TinyG.prototype.runSegment = function(data, callback) {
 	}
 };
 
+TinyG.prototype.sendNextGCode = function() {
+	// send a single line if we have the slots
+	if (this.slotsAvailable > 0) {
+		var code = this.gcode_queue.dequeue();
+		this.gcodeWrite(code + '\n');
+	}
+};
 TinyG.prototype.sendMoreGCodes = function() {
 	// dequeue enough gcode lines to fill most of the slots
-	// we're leaving 2 on the table here so we have a buffer in case a control is about to fill it
+	// we're leaving some on the table here so we have a buffer in case a control is about to fill it
 	// and we want one left for a future imminent control
-	if (this.slotsAvailable > 2) {
-		codes = this.gcode_queue.multiDequeue(this.slotsAvailable - 2);
+	if (this.slotsTotal > 0) {
+		var codes = this.gcode_queue.multiDequeue(this.slotsTotal - 6);
 		if(codes.length > 0) {
 			this.gcodeWrite(codes.join('\n') + '\n');
 		}
