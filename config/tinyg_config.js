@@ -91,23 +91,27 @@ TinyGConfig.prototype.setMany = TinyGConfig.prototype.update;
 // TODO: Move this data out into a configuration file, perhaps.
 TinyGConfig.prototype.configureStatusReports = function(callback) {
 	if(this.driver) {
-		this.driver.command({"sr":{
-						"posx":true, 
-						"posy":true, 
-						"posz":true, 
-						"posa":true, 
-						"posb":true, 
-						"vel":true, 
-						"stat":true, 
-						"hold":true, 
-						"line":true, 
-						"coor":true,
-						"unit":true
-					}});
-		this.driver.command({"qv":0});
-		this.driver.command({"jv":4});
-		this.driver.requestStatusReport();
-		return callback(null, this);
+		this.driver.setMany({
+			"sr":{
+				"posx":true,
+				"posy":true,
+				"posz":true,
+				"posa":true,
+				"posb":true,
+				"vel":true,
+				"stat":true,
+				"hold":true,
+				"line":true,
+				"coor":true,
+				"unit":true
+			},
+			"sv": 2,
+			"qv": 0,
+			"jv": 4
+		}, function () {
+			this.driver.requestStatusReport();
+			callback(null, this);
+		}.bind(this));
 	} else {
 		return callback(null, this);
 	}

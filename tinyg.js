@@ -131,9 +131,7 @@ TinyG.prototype.connect = function(control_path, gcode_path, callback) {
 
 	var onOpen = function(callback) {
 		this.controlWrite("\x18");
-		//this.controlWrite("\x04");
 		this.gcodeWrite("{clear:true}\n");
-		//this.command("{sv:2}");
 		this.command("M30");
 		this.requestStatusReport();
 		setTimeout(function() {

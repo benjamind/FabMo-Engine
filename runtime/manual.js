@@ -141,6 +141,8 @@ ManualRuntime.prototype.renewMoves = function() {
 ManualRuntime.prototype.stopMotion = function() {
 	this.keep_moving = false;
 	this.moving = false;
+	this.driver.feedHold();
+	this.driver.queueFlush();
 	this.driver.quit();
 }
 
@@ -148,5 +150,8 @@ ManualRuntime.prototype.pause = function() {
 	this.driver.feedHold();
 }
 
+ManualRuntime.prototype.quit = function() {
+	this.driver.quit();
+}
 
 exports.ManualRuntime = ManualRuntime;
